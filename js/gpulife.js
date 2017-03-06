@@ -83,8 +83,9 @@ function addBitmap(bitmap, mm, x, y) {
 var gameboard;
 function initialize() {
     gameboard = initBlankMatrix(WIDTH, HEIGHT);
-    //addGlider(gameboard, 1, 5);
-
+    /*
+    addGlider(gameboard, 1, 1);
+     */
     var rndBitmap = initRandomMatrix(HEIGHT/4, WIDTH/4);
     addBitmap(rndBitmap, gameboard, Math.floor(WIDTH*3/8), Math.floor(HEIGHT*3/8));
 }
@@ -215,7 +216,7 @@ var calcNextBoard = gpu.createKernel(
                 return 0;
             }
         }
-    })
+    }, {outputToTexture: true})
     .dimensions([HEIGHT, WIDTH]);
 
 var copyMatrix = gpu.createKernel(
@@ -244,13 +245,13 @@ var dimensionsMatrix = gpu.createKernel(
 
 var invertMatrix = gpu.createKernel(
     function(board) {
-        if (board[this.thread.y][this.thread.x] == 1) {
+        if (board[this.thread.y][this.thread.x] > 0) {
             return 0;
         } else {
             // return this.thread.y*10 + this.thread.x;
             return 1;
         }
-    }).dimensions([HEIGHT, WIDTH]);
+    }, {outputToTexture: true}).dimensions([HEIGHT, WIDTH]);
 
 var yxCodeMatrix = gpu.createKernel(
     function(matrix) {
@@ -258,11 +259,14 @@ var yxCodeMatrix = gpu.createKernel(
     }
 ).dimensions([HEIGHT, WIDTH]);
 
+var newboard;
 function stepEvent(evt) {
-    var newboard = calcNextBoard(gameboard);
+    var gpuResult = calcNextBoard(gameboard);
+
+    newboard = gpuResult.toArray().map( function(r) {return Array.from(r)} );
     render(newboard);
 
-    gameboard = newboard.map( function(row) {return Array.from(row)} );
+    gameboard = gpuResult;
 }
 
 // init step button
