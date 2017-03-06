@@ -1,10 +1,10 @@
 var gpu = new GPU();
 
-const WIDTH = 7;
-const HEIGHT = 4;
+const WIDTH = 192;
+const HEIGHT = 108;
 
-const RADIUS = 13;
-const DIAMETER = 30;
+const RADIUS = 2;
+const DIAMETER = 5;
 const START_ANGLE = 0;
 const END_ANGLE = 2 * Math.PI;
 
@@ -13,7 +13,7 @@ const END_ANGLE = 2 * Math.PI;
 function initBlankMatrix(width, height) {
     var matrix = [];
     for (var ii = 0 ; ii < width ; ii++) {
-        var row = new Float32Array(height);
+        var row = new Array(height);		// Float32Array
         for (var jj = 0 ; jj < height ; jj++) {
             row[jj] = 0.0;
         }
@@ -31,7 +31,7 @@ function initRandomMatrix(width, height) {
 
     var matrix = [];
     for (var ii = 0 ; ii < width ; ii++) {
-        var row = new Float32Array(height);
+        var row = new Array(height);		// Float32Array
         for (var jj = 0 ; jj < height; jj++) {
             row[jj] = rnd();
         }
@@ -49,7 +49,7 @@ function initXyCodedMatrix(width, height) {
 
     var matrix = [];
     for (var ii = 0 ; ii < width ; ii++) {
-        var row = new Float32Array(height);
+        var row = new Array(height);		// Float32Array
         for (var jj = 0 ; jj < height; jj++) {
             row[jj] = ii * 10 + jj;
         }
@@ -64,10 +64,14 @@ function addGlider(mm, x, y) {
         [0, 0, 1],
         [1, 1, 1],
     ];
+    addBitmap(bitmap, mm, x, y);
+}
+
+function addBitmap(bitmap, mm, x, y) {
     for (var ii = 0 ; ii < bitmap.length ; ii++) {
         var row = bitmap[ii];
         for (var jj = 0 ; jj < row.length ; jj++) {
-            mm[x+jj][y+ii] = row[jj] * 1.0;
+            mm[x+jj][y+ii] = row[jj];
 
             // console.log(ii, jj, 'x+ii', x+ii, 'y+jj', y+jj, 'row[jj]', row[jj]);
         }
@@ -75,22 +79,28 @@ function addGlider(mm, x, y) {
 }
 
 // init a matrix with the GPU
-var gameboard = initXyCodedMatrix(WIDTH, HEIGHT);
-//addGlider(gameboard, 0, 0);
+//
+var gameboard;
+function initialize() {
+    gameboard = initBlankMatrix(WIDTH, HEIGHT);
+    //addGlider(gameboard, 1, 5);
+
+    var rndBitmap = initRandomMatrix(HEIGHT/4, WIDTH/4);
+    addBitmap(rndBitmap, gameboard, Math.floor(WIDTH*3/8), Math.floor(HEIGHT*3/8));
+}
+initialize();
 
 var canvas = document.getElementById("myCanvas");
 var maxDimension = Math.max(WIDTH, HEIGHT);
-canvas['width'] = maxDimension * DIAMETER;
-canvas['height'] = maxDimension * DIAMETER;
+canvas['width'] = WIDTH * DIAMETER;
+canvas['height'] = HEIGHT * DIAMETER;
 
 var ctx = canvas.getContext("2d");
 
 // draw the matrix
 //
 function render(matrix) {
-    /*
-    */
-    console.log('matrix', matrix);
+    // console.log('matrix', matrix);
     // console.log('lengths', matrix.map(function(itm) { return itm.length }));
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -101,16 +111,24 @@ function render(matrix) {
         for (var jj = 0 ; jj < height ; jj++) {
             var y = jj * DIAMETER + RADIUS;
             var cell = matrix[ii][jj];
-            if (cell > 0.5) {
-                ctx.fillStyle = "#0f0";
+            if (cell > 0.9) {
+                ctx.fillStyle = "green";	// "#0f0";
 
                 ctx.beginPath();
                 ctx.arc(x, y, RADIUS, START_ANGLE, END_ANGLE);
                 ctx.fill();
 
+                /*
+                 * text
+                 *
                 ctx.fillStyle = "black";
                 ctx.fillText(""+cell, x-RADIUS/2, y);
+                 *
+                 */
             }
+            /*
+             * blank
+             *
             else {
                 ctx.fillStyle = "#EEE";
 
@@ -121,6 +139,8 @@ function render(matrix) {
                 ctx.fillStyle = "black";
                 ctx.fillText(""+cell, x-RADIUS/2, y);
             }
+            *
+            */
         }
     }
 }
@@ -130,7 +150,8 @@ render(gameboard);
 var calcNextBoard = gpu.createKernel(
     function(board) {
         function binary(cell) {
-            if (cell > 0.5) {
+            return cell;
+            if (cell > 0.9) {
                 return 1;
             }
             else {
@@ -223,7 +244,7 @@ var dimensionsMatrix = gpu.createKernel(
 
 var invertMatrix = gpu.createKernel(
     function(board) {
-        if (board[this.thread.y][this.thread.x] > 0.8) {
+        if (board[this.thread.y][this.thread.x] == 1) {
             return 0;
         } else {
             // return this.thread.y*10 + this.thread.x;
@@ -238,19 +259,10 @@ var yxCodeMatrix = gpu.createKernel(
 ).dimensions([HEIGHT, WIDTH]);
 
 function stepEvent(evt) {
-    var newboard = copyMatrix(gameboard);
+    var newboard = calcNextBoard(gameboard);
+    render(newboard);
 
-    /*
-    var oldX = gameboard.length
-    var oldY = gameboard[0].length;
-    var newX = newboard.length;
-    var newY = newboard[0].length;
-    console.log(oldX, oldY, ' -> ', newX, newY);
-    */
-
-    render(newboard, WIDTH, HEIGHT);
-
-    gameboard = newboard;
+    gameboard = newboard.map( function(row) {return Array.from(row)} );
 }
 
 // init step button
@@ -258,9 +270,35 @@ var btnStep = document.getElementById("btnStep");
 btnStep.addEventListener("click", stepEvent);
 
 // init run button
+var runFlag = false;
 var runForever = function() {
     stepEvent();
-    setTimeout(runForever, 0);
+    if (runFlag) {
+        setTimeout(runForever, 0);
+    }
 }
 var btnRun = document.getElementById("btnRun");
-btnRun.addEventListener("click", runForever);
+btnRun.addEventListener("click", function(evt) {
+    runFlag = true;
+    runForever();
+});
+
+// init stop button
+var btnStop = document.getElementById("btnStop");
+btnStop.addEventListener("click", function(evt) {
+    runFlag = false;
+});
+
+// init init button
+var btnInit = document.getElementById("btnInit");
+btnInit.addEventListener("click", function(evt) {
+    runFlag = false;
+    setTimeout(
+        function() {
+            initialize();
+            render(gameboard);
+        },
+        10
+    );
+});
+
