@@ -215,7 +215,7 @@ var calcNextBoard = gpu.createKernel(
                 return 0;
             }
         }
-    })
+    },{mode: "gpu"})
     .dimensions([HEIGHT, WIDTH]);
 
 var copyMatrix = gpu.createKernel(
