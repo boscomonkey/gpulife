@@ -273,17 +273,37 @@ function stepEvent(evt) {
 var btnStep = document.getElementById("btnStep");
 btnStep.addEventListener("click", stepEvent);
 
+// calculating FPS
+//
+var numIterations = 0;
+var startTime = 0;
+
 // init run button
+var fpsNode = document.getElementById("fps");
 var runFlag = false;
 var runForever = function() {
     stepEvent();
+    numIterations++;
+
     if (runFlag) {
+        // report FPS once in a while
+        if (numIterations % 100 == 0) {
+            var endTime = new Date();
+            var ms = endTime - startTime;
+            fpsNode.innerHTML = ms / numIterations;
+        }            
+
+        // do the next lap
         setTimeout(runForever, 0);
     }
 }
 var btnRun = document.getElementById("btnRun");
 btnRun.addEventListener("click", function(evt) {
     runFlag = true;
+
+    numIterations = 0;
+    startTime = new Date();
+
     runForever();
 });
 
