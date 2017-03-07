@@ -150,16 +150,6 @@ render(gameboard);
 // one step
 var calcNextBoard = gpu.createKernel(
     function(board) {
-        function binary(cell) {
-            return cell;
-            if (cell > 0.9) {
-                return 1;
-            }
-            else {
-                return 0;
-            }
-        }
-
         var x = this.thread.x;
         var y = this.thread.y;
 
@@ -196,9 +186,9 @@ var calcNextBoard = gpu.createKernel(
         //// Conway's rules
 
         var numNeighborsAlive =
-            binary(board[prevY][prevX])	  + binary(board[y][prevX]) + binary(board[nextY][prevX])
-            + binary(board[prevY][x])				    + binary(board[nextY][x])
-            + binary(board[prevY][nextX]) + binary(board[y][nextX]) + binary(board[nextY][nextX]);
+            (board[prevY][prevX])   + (board[y][prevX]) + (board[nextY][prevX])
+            + (board[prevY][x])				+ (board[nextY][x])
+            + (board[prevY][nextX]) + (board[y][nextX]) + (board[nextY][nextX]);
 
         // live cell
         if (board[y][x] > 0.5) {
@@ -263,8 +253,10 @@ var newboard;
 function stepEvent(evt) {
     var gpuResult = calcNextBoard(gameboard);
 
+    /*
     newboard = gpuResult.toArray().map( function(r) {return Array.from(r)} );
     render(newboard);
+     */
 
     gameboard = gpuResult;
 }
