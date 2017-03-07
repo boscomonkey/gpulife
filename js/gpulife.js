@@ -135,126 +135,74 @@ function cpuRender(matrix) {
     }
 }
 
-// one step
-var calcNextBoard = gpu.createKernel(
-    function(board) {
-        var x = this.thread.x;
-        var y = this.thread.y;
+// calculate next Conway's Game of Life step
+//
+var calcCell = function(board) {
+    var x = this.thread.x;
+    var y = this.thread.y;
 
-        var prevX;
-        if (x == 0) {
-            prevX = this.dimensions.x - 1;
-        }
-        else {
-            prevX = x - 1;
-        }
-        var prevY;
-        if (y == 0) {
-            prevY = this.dimensions.y - 1;
-        }
-        else {
-            prevY = y - 1;
-        }
+    var prevX;
+    if (x == 0) {
+        prevX = this.dimensions.x - 1;
+    } else {
+        prevX = x - 1;
+    }
+    var prevY;
+    if (y == 0) {
+        prevY = this.dimensions.y - 1;
+    } else {
+        prevY = y - 1;
+    }
 
-        var nextX;
-        if (x == (this.dimensions.x - 1)) {
-            nextX = 0;
-        }
-        else {
-            nextX = x + 1;
-        }
-        var nextY;
-        if (y == (this.dimensions.y - 1)) {
-            nextY = 0;
-        }
-        else {
-            nextY = y + 1;
-        }
+    var nextX;
+    if (x == (this.dimensions.x - 1)) {
+        nextX = 0;
+    } else {
+        nextX = x + 1;
+    }
+    var nextY;
+    if (y == (this.dimensions.y - 1)) {
+        nextY = 0;
+    } else {
+        nextY = y + 1;
+    }
 
-        //// Conway's rules
+    //// Conway's rules
 
-        var numNeighborsAlive =
-            (board[prevY][prevX])   + (board[y][prevX]) + (board[nextY][prevX])
-            + (board[prevY][x])				+ (board[nextY][x])
-            + (board[prevY][nextX]) + (board[y][nextX]) + (board[nextY][nextX]);
+    var numNeighborsAlive =
+        (board[prevY][prevX])   + (board[y][prevX]) + (board[nextY][prevX])
+        + (board[prevY][x])				+ (board[nextY][x])
+        + (board[prevY][nextX]) + (board[y][nextX]) + (board[nextY][nextX]);
 
-        // live cell
-        if (board[y][x] > 0.5) {
-            if (numNeighborsAlive >= 1.9 && numNeighborsAlive <= 3.1) {
-                return 1;
-            } else {
-                return 0;
-            }
+    // live cell
+    if (board[y][x] == 1) {
+        if (numNeighborsAlive == 2 || numNeighborsAlive == 3) {
+            this.color(0, 0.5, 0);
+            return 1;
+        } else {
+            this.color(1, 1, 1);
+            return 0;
         }
-        // dead cell
-        else {
-            if (numNeighborsAlive >= 2.9 && numNeighborsAlive <= 3.1) {
-                return 1;
-            } else {
-                return 0;
-            }
+    }
+    // dead cell
+    else {
+        if (numNeighborsAlive == 3) {
+            this.color(0, 0.5, 0);
+            return 1;
+        } else {
+            this.color(1, 1, 1);
+            return 0;
         }
-    }, {outputToTexture: true}).dimensions([HEIGHT, WIDTH]);
+    }
+};
 
-var calcNextBoardCanvas = gpu.createKernel(
-    function(board) {
-        var x = this.thread.x;
-        var y = this.thread.y;
+var calcNextBoard = gpu.createKernel(calcCell)
+    .outputToTexture(true)
+    .dimensions([HEIGHT, WIDTH]);
 
-        var prevX;
-        if (x == 0) {
-            prevX = this.dimensions.x - 1;
-        }
-        else {
-            prevX = x - 1;
-        }
-        var prevY;
-        if (y == 0) {
-            prevY = this.dimensions.y - 1;
-        }
-        else {
-            prevY = y - 1;
-        }
-
-        var nextX;
-        if (x == (this.dimensions.x - 1)) {
-            nextX = 0;
-        }
-        else {
-            nextX = x + 1;
-        }
-        var nextY;
-        if (y == (this.dimensions.y - 1)) {
-            nextY = 0;
-        }
-        else {
-            nextY = y + 1;
-        }
-
-        //// Conway's rules
-
-        var numNeighborsAlive =
-            (board[prevY][prevX])   + (board[y][prevX]) + (board[nextY][prevX])
-            + (board[prevY][x])				+ (board[nextY][x])
-            + (board[prevY][nextX]) + (board[y][nextX]) + (board[nextY][nextX]);
-
-        // live cell
-        if (board[y][x] > 0.5) {
-            if (numNeighborsAlive >= 1.9 && numNeighborsAlive <= 3.1) {
-                this.color(0, 0.5, 0);
-            } else {
-                this.color(1, 1, 1);
-            }
-        }
-        // dead cell
-        else {
-            if (numNeighborsAlive >= 2.9 && numNeighborsAlive <= 3.1) {
-                this.color(0, 0.5, 0);
-            } else {
-                this.color(1, 1, 1);
-            }
-        }
-    }, {graphical: true}).dimensions([HEIGHT, WIDTH]);
+var calcNextBoardCanvas = gpu.createKernel(calcCell)
+    .graphical(true)
+    .dimensions([HEIGHT, WIDTH]);
 
 var copyMatrix = gpu.createKernel(
     function(A) {
