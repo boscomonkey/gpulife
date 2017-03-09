@@ -243,7 +243,7 @@ var invertMatrix = gpu.createKernel(
         } else {
             return 1;
         }
-    }, {outputToTexture: true}).dimensions([HEIGHT, WIDTH]);
+    }, {outputToTexture: true}).dimensions([HEIGHT, WIDTH]).mode('gpu');
 
 var invertMatrixCanvas = gpu.createKernel(
     function(board) {
@@ -252,15 +252,42 @@ var invertMatrixCanvas = gpu.createKernel(
         } else {
             this.color(0, 0.5, 0);
         }
-    }, {graphical: true}).dimensions([HEIGHT, WIDTH]);
+    }, {graphical: true}).dimensions([HEIGHT, WIDTH]).mode('gpu');
 
 // init a matrix with the GPU
 //
 var gpuResult;
 var gpuCanvas = null;
 function initialize() {
+    var rand = function(limit) {
+        return Math.floor((limit - 50) * Math.random());
+    }
+
     var gameboard = initBlankMatrix(WIDTH, HEIGHT);
     // addGlider(gameboard, 1, 1);
+
+    var gunAlpha = gosperGliderGunMatrix();
+    addBitmap(gunAlpha, gameboard,
+              // 50, 150
+              rand(WIDTH), rand(HEIGHT)
+             );
+
+    addBitmap(leftRightReverse(gunAlpha), gameboard,
+              // 50, 650
+              rand(WIDTH), rand(HEIGHT)
+             );
+/*
+    addBitmap(upDownReverse(gunAlpha), gameboard,
+              // 362, 650
+              rand(WIDTH), rand(HEIGHT)
+             );
+
+    addBitmap(upDownReverse(leftRightReverse(upDownReverse(gunAlpha))), gameboard,
+              // 362, 150
+              rand(WIDTH), rand(HEIGHT)
+             );
+*/
+    // random stuff in the middle
     var rndBitmap = initRandomMatrix(WIDTH/4, HEIGHT/4);
     addBitmap(rndBitmap, gameboard, Math.floor(WIDTH*3/8), Math.floor(HEIGHT*3/8));
 
@@ -304,7 +331,7 @@ var runForever = function() {
         if (numIterations % 100 == 0) {
             var endTime = new Date();
             var ms = endTime - startTime;
-            fpsNode.innerHTML = ms / numIterations;
+            fpsNode.innerHTML = Math.floor(numIterations / (ms / 1000));
             iterNode.innerHTML = numIterations;
         }            
 
